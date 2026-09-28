@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratório de Marie Curie - O Experimento do Rádio</title>
+    <!-- Tailwind CSS para UI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0d10;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        .font-cinzel {
+            font-family: 'Cinzel', serif;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .glow-green-text {
+            text-shadow: 0 0 10px rgba(57, 255, 20, 0.7), 0 0 20px rgba(57, 255, 20, 0.4);
+        }
+        .glow-box {
+            box-shadow: 0 0 15px rgba(57, 255, 20, 0.25), inset 0 0 15px rgba(57, 255, 20, 0.1);
+        }
+        .vintage-panel {
+            background: linear-gradient(135deg, rgba(30, 24, 18, 0.9) 0%, rgba(15, 12, 9, 0.95) 100%);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7);
+        }
+        .btn-vintage {
+            background: linear-gradient(180deg, #d4af37 0%, #aa820a 100%);
+            color: #1a0f00;
+            font-weight: 700;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+            transition: all 0.2s ease;
+        }
+        .btn-vintage:hover {
+            background: linear-gradient(180deg, #e5be48 0%, #c19615 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(212, 175, 55, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+        }
+        .btn-vintage:active {
+            transform: translateY(1px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d4af37;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="text-slate-100">
+
+    <div id="canvas-container" class="absolute inset-0 w-full h-full z-0"></div>
+
+    <div id="ui-layer" class="relative z-10 w-full h-full pointer-events-none flex flex-col justify-between p-4 sm:p-6">
+        
+        <!-- Header / Stage Status -->
+        <div class="flex justify-between items-start w-full">
+            <div class="vintage-panel rounded-xl p-4 max-w-md pointer-events-auto border-l-4 border-l-amber-500">
+                <div class="flex items-center space-x-2">
+                    <span class="inline-block w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <h1 class="text-xs uppercase tracking-widest text-amber-400 font-semibold">Laboratório de Paris - 1898</h1>
+                </div>
+                <h2 id="stage-title" class="font-cinzel text-xl sm:text-2xl font-bold text-slate-100 mt-1">Etapa 1: Coleta do Pechblenda</h2>
+                <p id="stage-desc" class="text-xs sm:text-sm text-slate-300 mt-1 leading-relaxed">
+                    Encontre os minérios radioativos de Pechblenda espalhados pelas mesas e pelo chão e coloque-os no balde de ferro.
+                </p>
+                
+                <!-- Progress Bar -->
+                <div class="mt-3">
+                    <div class="flex justify-between text-xs font-semibold mb-1">
+                        <span id="progress-label" class="text-amber-300">Pedras Coletadas:</span>
+                        <span id="progress-counter" class="text-emerald-400 glow-green-text">0 / 5</span>
+                    </div>
+                    <div class="w-full bg-slate-900/80 rounded-full h-2.5 overflow-hidden border border-slate-700">
+                        <div id="progress-bar" class="bg-gradient-to-r from-emerald-600 to-emerald-400 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mini Controls Guide -->
+            <div class="vintage-panel rounded-xl p-3 text-xs text-slate-300 pointer-events-auto hidden sm:block max-w-xs">
+                <div class="font-semibold text-amber-400 mb-1 flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Controles:
+                </div>
+                <ul class="space-y-1 text-slate-300">
+                    <li><span class="text-amber-200 font-mono font-bold">WASD / Setas</span> : Mover Marie Curie</li>
+                    <li><span class="text-amber-200 font-mono font-bold">Mouse (Arrastar)</span> : Girar Câmera</li>
+                    <li><span class="text-amber-200 font-mono font-bold">E / Clique</span> : Interagir com Objetos</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Interactive Action Prompt Center Screen -->
+        <div id="action-prompt" class="self-center my-auto transition-all duration-300 opacity-0 transform translate-y-4 pointer-events-auto">
+            <div class="vintage-panel glow-box px-6 py-3 rounded-full flex items-center space-x-3 border-emerald-500/50">
+                <span class="bg-amber-500 text-slate-950 font-bold px-2 py-0.5 rounded text-xs font-mono shadow">E</span>
+                <span id="action-text" class="text-sm font-semibold text-emerald-300 glow-green-text">Pegar Pedra de Radiação</span>
+            </div>
+        </div>
+
+        <!-- Inventory & Context Helpers (Bottom) -->
+        <div class="flex justify-between items-end w-full">
+            <div class="vintage-panel rounded-xl p-3 pointer-events-auto flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-lg bg-slate-900 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold">
+                    <span id="inv-icon">🪨</span>
+                </div>
+                <div>
+                    <div class="text-[10px] uppercase text-amber-400 tracking-wider font-semibold">Inventário Ativo</div>
+                    <div id="inv-status" class="text-xs font-medium text-slate-200">Mãos Vazias</div>
+                </div>
+            </div>
+
+            <!-- Mobile Touch Controls overlay -->
+            <div class="flex gap-2 pointer-events-auto sm:hidden">
+                <button id="btn-mobile-interact" class="btn-vintage px-4 py-3 rounded-xl text-xs flex items-center gap-1 shadow-lg">
+                    ✨ Interagir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- START / INSTRUCTION MODAL -->
+    <div id="modal-start" class="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4">
+        <div class="vintage-panel max-w-xl w-full rounded-2xl p-6 sm:p-8 border border-amber-500/40 shadow-2xl relative text-center">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-amber-500/10 border border-amber-500/50 flex items-center justify-center text-3xl">
+                ⚗️
+            </div>
+            <h1 class="font-cinzel text-2xl sm:text-3xl font-bold text-amber-400 tracking-wider">Laboratório de Marie Curie</h1>
+            <p class="text-xs uppercase tracking-widest text-slate-400 mt-1 mb-4">A Busca pelos Elementos Radioativos</p>
+            
+            <div class="text-sm text-slate-300 space-y-3 text-left bg-slate-950/60 p-4 rounded-xl border border-slate-800 my-4 max-h-60 overflow-y-auto">
+                <p>Bem-vindo ao histórico laboratório em Paris! Você ajudará a Dra. <strong>Marie Curie</strong> em suas célebres pesquisas que resultaram na descoberta do <strong>Rádio</strong> e do <strong>Polônio</strong>.</p>
+                <p>O jogo é dividido em 3 etapas científicas essenciais:</p>
+                <ol class="list-decimal list-inside space-y-1 text-amber-200 text-xs font-medium">
+                    <li>Coletar minérios de Pechblenda espalhados e depositá-los no balde de ferro.</li>
+                    <li>Esmagar as pedras com o pilão para criar um pó radioativo fino.</li>
+                    <li>Extrair o líquido e purificá-lo nos tubos de ensaio de laboratório.</li>
+                </ol>
+            </div>
+
+            <button id="btn-start" class="btn-vintage w-full py-3.5 rounded-xl text-base tracking-wide mt-2">
+                INICIAR EXPERIMENTO
+            </button>
+        </div>
+    </div>
+
+    <!-- FINAL VICTORY MODAL -->
+    <div id="modal-victory" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 hidden">
+        <div class="vintage-panel max-w-2xl w-full rounded-2xl p-6 sm:p-8 border border-emerald-500/50 shadow-2xl relative text-center glow-box">
+            <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-4xl animate-bounce">
+                🏆
+            </div>
+            <h1 class="font-cinzel text-2xl sm:text-3xl font-bold text-emerald-400 glow-green-text">Descoberta Histórica Concluída!</h1>
+            <p class="text-xs uppercase tracking-widest text-amber-300 mt-1 mb-4">Prêmio Nobel de Física e Química</p>
+            
+            <div class="text-sm text-slate-300 space-y-3 text-left bg-slate-950/80 p-5 rounded-xl border border-emerald-900/50 my-4">
+                <p class="text-emerald-200 font-medium">Parabéns! Você isolou com sucesso o elemento <strong>Rádio (Ra)</strong> com Marie Curie!</p>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Marie Curie foi a primeira mulher a ganhar o Prêmio Nobel e a única pessoa na história a receber dois Prêmios Nobel em ciências diferentes (Física em 1903 e Química em 1911). Suas descobertas revolucionaram a medicina moderna, o diagnóstico por raio-X e a física nuclear.
+                </p>
+            </div>
+
+            <button id="btn-restart" class="btn-vintage w-full py-3.5 rounded-xl text-base tracking-wide mt-2">
+                JOGAR NOVAMENTE
+            </button>
+        </div>
+    </div>
+
+    <script>
+        class SoundFX {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playPickup() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.15);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playCrush() {
+                if (!this.ctx) return;
+                // Noise buffer for crushing sound
+                const bufferSize = this.ctx.sampleRate * 0.2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(800, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(100, this.ctx.currentTime + 0.2);
+                
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start();
+            }
+
+            playLiquid() {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(600, this.ctx.currentTime + 0.3);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.3);
+            }
+
+            playVictory() {
+                if (!this.ctx) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime + idx * 0.12);
+                    gain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + idx * 0.12 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.12 + 0.5);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.12);
+                    osc.stop(this.ctx.currentTime + idx * 0.12 + 0.5);
+                });
+            }
+        }
+
+        const soundFX = new SoundFX();
+
+        const GAME_STAGES = {
+            PART_1: 1, // Collect rocks -> bucket
+            PART_2: 2, // Crush rocks with mortar & pestle
+            PART_3: 3  // Extract liquid into test tubes
+        };
+
+        let currentStage = GAME_STAGES.PART_1;
+        let stageProgress = 0;
+        const TARGET_ROCKS = 5;
+        const TARGET_CRUSHES = 5;
+        const TARGET_TUBES = 4;
+
+        let hasRockInHand = false;
+        let isCrushing = false;
+
+        // Scene elements
+        let scene, camera, renderer;
+        let marieCurieMesh, marieGroup;
+        let rocks = [];
+        let bucketMesh;
+        let mortarMesh, pestleMesh;
+        let tubeGroup;
+        let testTubes = [];
+        let radioactiveParticles;
+        let raycaster, mouse;
+        
+        // Input state
+        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
+        let cameraAngleX = 0;
+        let cameraAngleY = 0.4;
+        let isDraggingMouse = false;
+        let previousMouseX = 0;
+        let previousMouseY = 0;
+
+        // Interaction target tracker
+        let currentInteractTarget = null;
+
+        function initEngine() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0c);
+            scene.fog = new THREE.FogExp2(0x0a0a0c, 0.04);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Lighting setup
+            setupLighting();
+
+            // Build Room Environment
+            buildLaboratory();
+
+            // Build Character (Marie Curie)
+            buildMarieCurie();
+
+            // Build Stage Objects
+            buildInteractiveObjects();
+
+            // Build Particle Systems
+            buildParticles();
+
+            // Setup Event Listeners
+            setupEventListeners();
+
+            // Initial UI Sync
+            updateUI();
+        }
+
+        function setupLighting() {
+            // Ambient dim warm light
+            const ambientLight = new THREE.AmbientLight(0xffedd8, 0.3);
+            scene.add(ambientLight);
+
+            // Main vintage room lamp
+            const roomLight = new THREE.PointLight(0xffb055, 1.2, 18);
+            roomLight.position.set(0, 4.5, 0);
+            roomLight.castShadow = true;
+            roomLight.shadow.mapSize.width = 1024;
+            roomLight.shadow.mapSize.height = 1024;
+            scene.add(roomLight);
+
+            // Glowing Radium Green Light
+            const radiumLight = new THREE.PointLight(0x39ff14, 2, 8);
+            radiumLight.position.set(2, 1.5, -1);
+            scene.add(radiumLight);
+
+            // Subtle window blue backlight
+            const windowLight = new THREE.DirectionalLight(0x406080, 0.5);
+            windowLight.position.set(-8, 5, -5);
+            scene.add(windowLight);
+        }
+
+        function buildLaboratory() {
+            // Materials
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x3d2514, roughness: 0.7 });
+            const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x22140a, roughness: 0.8 });
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.9 });
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0x2e3338, roughness: 0.8 });
+            const brassMat = new THREE.MeshStandardMaterial({ color: 0xc5a059, metalness: 0.8, roughness: 0.3 });
+            const glassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.35,
+                roughness: 0.1,
+                transmission: 0.9,
+                thickness: 0.5
+            });
+
+            // Floor
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene.add(floor);
+
+            // Walls
+            const wallBack = new THREE.Mesh(new THREE.PlaneGeometry(16, 8), wallMat);
+            wallBack.position.set(0, 4, -8);
+            wallBack.receiveShadow = true;
+            scene.add(wallBack);
+
+            const wallLeft = new THREE.Mesh(new THREE.PlaneGeometry(16, 8), wallMat);
+            wallLeft.position.set(-8, 4, 0);
+            wallLeft.rotation.y = Math.PI / 2;
+            wallLeft.receiveShadow = true;
+            scene.add(wallLeft);
+
+            // Chalkboard on back wall
+            const boardMat = new THREE.MeshStandardMaterial({ color: 0x152219, roughness: 0.5 });
+            const board = new THREE.Mesh(new THREE.BoxGeometry(6, 3, 0.1), boardMat);
+            board.position.set(0, 4.5, -7.9);
+            scene.add(board);
+
+            // Frame for chalkboard
+            const boardFrame = new THREE.Mesh(new THREE.BoxGeometry(6.2, 3.2, 0.05), woodMat);
+            boardFrame.position.set(0, 4.5, -7.93);
+            scene.add(boardFrame);
+
+            // Main Workbench (Center-Right)
+            const mainTableGroup = new THREE.Group();
+            const tableTop = new THREE.Mesh(new THREE.BoxGeometry(5, 0.2, 2.2), woodMat);
+            tableTop.position.set(0, 1.2, 0);
+            tableTop.castShadow = true;
+            tableTop.receiveShadow = true;
+            mainTableGroup.add(tableTop);
+
+            // Table Legs
+            const legGeo = new THREE.BoxGeometry(0.2, 1.2, 0.2);
+            [[-2.3, -0.9], [2.3, -0.9], [-2.3, 0.9], [2.3, 0.9]].forEach(([x, z]) => {
+                const leg = new THREE.Mesh(legGeo, darkWoodMat);
+                leg.position.set(x, 0.6, z);
+                leg.castShadow = true;
+                mainTableGroup.add(leg);
+            });
+            mainTableGroup.position.set(0, 0, -1);
+            scene.add(mainTableGroup);
+
+            // Side Table (Left)
+            const sideTable = mainTableGroup.clone();
+            sideTable.position.set(-4.5, 0, 1);
+            sideTable.rotation.y = Math.PI / 2;
+            scene.add(sideTable);
+
+            // Laboratory Shelves with Glassware
+            const shelfGeo = new THREE.BoxGeometry(4, 0.1, 0.6);
+            for (let i = 0; i < 2; i++) {
+                const shelf = new THREE.Mesh(shelfGeo, woodMat);
+                shelf.position.set(-5, 3 + i * 1.2, -7.6);
+                scene.add(shelf);
+
+                // Add decorative flasks on shelves
+                for (let j = -1.5; j <= 1.5; j += 0.8) {
+                    const flaskGeo = new THREE.ConeGeometry(0.18, 0.4, 12);
+                    const flask = new THREE.Mesh(flaskGeo, glassMat);
+                    flask.position.set(-5 + j, 3.25 + i * 1.2, -7.6);
+                    scene.add(flask);
+                }
+            }
+        }
+
+        function buildMarieCurie() {
+            marieGroup = new THREE.Group();
+
+            // Materials
+            const dressMat = new THREE.MeshStandardMaterial({ color: 0x1f2421, roughness: 0.8 }); // Vintage dark Victorian dress
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xffdbac, roughness: 0.6 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0x4a2e18, roughness: 0.9 }); // Dark brown hair bun
+
+            // Skirt (Cone)
+            const skirt = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.55, 1.1, 16), dressMat);
+            skirt.position.y = 0.55;
+            skirt.castShadow = true;
+            marieGroup.add(skirt);
+
+            // Torso
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.25, 0.6, 16), dressMat);
+            torso.position.y = 1.3;
+            torso.castShadow = true;
+            marieGroup.add(torso);
+
+            // Head
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), skinMat);
+            head.position.y = 1.75;
+            head.castShadow = true;
+            marieGroup.add(head);
+
+            // Hair Bun
+            const hairBun = new THREE.Mesh(new THREE.SphereGeometry(0.14, 12, 12), hairMat);
+            hairBun.position.set(0, 1.85, -0.1);
+            marieGroup.add(hairBun);
+
+            // Arms
+            const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.5);
+            const armL = new THREE.Mesh(armGeo, dressMat);
+            armL.position.set(-0.28, 1.25, 0);
+            armL.rotation.z = 0.2;
+            marieGroup.add(armL);
+
+            const armR = new THREE.Mesh(armGeo, dressMat);
+            armR.position.set(0.28, 1.25, 0);
+            armR.rotation.z = -0.2;
+            marieGroup.add(armR);
+
+            marieGroup.position.set(0, 0, 2);
+            scene.add(marieGroup);
+            marieCurieMesh = marieGroup;
+        }
+
+        function buildInteractiveObjects() {
+            // Pitchblende Rock Geometry & Material
+            const rockGeo = new THREE.DodecahedronGeometry(0.18, 1);
+            const rockMat = new THREE.MeshStandardMaterial({
+                color: 0x1f2e1e,
+                roughness: 0.8,
+                emissive: 0x228b22,
+                emissiveIntensity: 0.6
+            });
+
+            // Spawning 5 Radioactive Pitchblende Rocks
+            const rockPositions = [
+                new THREE.Vector3(-0.8, 1.35, -1.2),
+                new THREE.Vector3(1.2, 1.35, -0.8),
+                new THREE.Vector3(-4.3, 1.35, 1.2),
+                new THREE.Vector3(-4.5, 1.35, 0.6),
+                new THREE.Vector3(2.5, 0.18, 1.5) // floor rock
+            ];
+
+            rockPositions.forEach((pos, idx) => {
+                const rock = new THREE.Mesh(rockGeo, rockMat);
+                rock.position.copy(pos);
+                rock.rotation.set(Math.random(), Math.random(), Math.random());
+                rock.castShadow = true;
+                rock.userData = { id: idx, type: 'rock' };
+                scene.add(rock);
+                rocks.push(rock);
+            });
+
+            // Iron Bucket / Container (Destination for Stage 1)
+            const bucketMat = new THREE.MeshStandardMaterial({ color: 0x4a5568, metalness: 0.7, roughness: 0.4 });
+            bucketMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.3, 0.6, 16), bucketMat);
+            bucketMesh.position.set(1.8, 1.5, -1.2);
+            bucketMesh.castShadow = true;
+            bucketMesh.userData = { type: 'bucket' };
+            scene.add(bucketMesh);
+
+            // Mortar & Pestle (Stage 2)
+            const mortarGroup = new THREE.Group();
+            const mortarMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.5 }); // Granite/brass style
+            
+            const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.2, 0.35, 16), mortarMat);
+            bowl.castShadow = true;
+            mortarGroup.add(bowl);
+
+            pestleMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 0.4, 12), mortarMat);
+            pestleMesh.position.set(0, 0.3, 0);
+            pestleMesh.rotation.z = -0.3;
+            pestleMesh.castShadow = true;
+            mortarGroup.add(pestleMesh);
+
+            mortarGroup.position.set(-1.2, 1.38, -1.0);
+            mortarGroup.userData = { type: 'mortar' };
+            scene.add(mortarGroup);
+            mortarMesh = mortarGroup;
+
+            // Test Tubes Stand & Tubes (Stage 3)
+            tubeGroup = new THREE.Group();
+            const rackMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.7 });
+            const rackBase = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.1, 0.4), rackMat);
+            tubeGroup.add(rackBase);
+
+            const tubeGlassMat = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.4,
+                roughness: 0.1,
+                transmission: 0.9
+            });
+
+            const tubeLiquidMat = new THREE.MeshStandardMaterial({
+                color: 0x39ff14,
+                emissive: 0x39ff14,
+                emissiveIntensity: 0.8,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            for (let i = 0; i < TARGET_TUBES; i++) {
+                const singleTube = new THREE.Group();
+                const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 12), tubeGlassMat);
+                glass.position.y = 0.25;
+                singleTube.add(glass);
+
+                // Liquid fill mesh inside
+                const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.01, 12), tubeLiquidMat);
+                liquid.position.y = 0.05;
+                liquid.scale.set(1, 0.01, 1);
+                liquid.userData = { isFilled: false };
+                singleTube.add(liquid);
+
+                singleTube.position.set(-0.45 + i * 0.3, 0.05, 0);
+                singleTube.userData = { type: 'tube', index: i, liquidMesh: liquid };
+                tubeGroup.add(singleTube);
+                testTubes.push(singleTube);
+            }
+
+            tubeGroup.position.set(0.2, 1.25, -1.0);
+            tubeGroup.userData = { type: 'tubeRack' };
+            scene.add(tubeGroup);
+        }
+
+        function buildParticles() {
+            const particleCount = 60;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                positions[i] = (Math.random() - 0.5) * 6;
+                positions[i + 1] = Math.random() * 3 + 0.5;
+                positions[i + 2] = (Math.random() - 0.5) * 6;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.PointsMaterial({
+                color: 0x39ff14,
+                size: 0.08,
+                transparent: true,
+                opacity: 0.7,
+                blending: THREE.AdditiveBlending
+            });
+
+            radioactiveParticles = new THREE.Points(geometry, material);
+            scene.add(radioactiveParticles);
+        }
+
+        function setupEventListeners() {
+            window.addEventListener('resize', onWindowResize);
+
+            // Movement Keyboard Listeners
+            window.addEventListener('keydown', (e) => {
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
+                if (e.key.toLowerCase() === 'e') performInteraction();
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+            });
+
+            // Camera Orbit Mouse Control
+            window.addEventListener('mousedown', (e) => {
+                if (e.target.tagName === 'CANVAS') {
+                    isDraggingMouse = true;
+                    previousMouseX = e.clientX;
+                    previousMouseY = e.clientY;
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+                if (isDraggingMouse) {
+                    const deltaX = e.clientX - previousMouseX;
+                    const deltaY = e.clientY - previousMouseY;
+
+                    cameraAngleX -= deltaX * 0.005;
+                    cameraAngleY = Math.max(0.1, Math.min(1.2, cameraAngleY + deltaY * 0.005));
+
+                    previousMouseX = e.clientX;
+                    previousMouseY = e.clientY;
+                }
+            });
+
+            window.addEventListener('mouseup', () => { isDraggingMouse = false; });
+
+            // Click to Interact directly on 3D Objects
+            window.addEventListener('click', (e) => {
+                if (e.target.tagName === 'CANVAS' && !isDraggingMouse) {
+                    checkRaycastInteraction();
+                }
+            });
+
+            // UI Button Handlers
+            document.getElementById('btn-start').addEventListener('click', () => {
+                soundFX.init();
+                document.getElementById('modal-start').classList.add('hidden');
+            });
+
+            document.getElementById('btn-restart').addEventListener('click', () => {
+                location.reload();
+            });
+
+            document.getElementById('btn-mobile-interact').addEventListener('click', () => {
+                performInteraction();
+            });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function updatePlayerMovement() {
+            if (!marieCurieMesh) return;
+
+            const speed = 0.06;
+            const moveDir = new THREE.Vector3(0, 0, 0);
+
+            if (keys.w || keys.ArrowUp) moveDir.z -= 1;
+            if (keys.s || keys.ArrowDown) moveDir.z += 1;
+            if (keys.a || keys.ArrowLeft) moveDir.x -= 1;
+            if (keys.d || keys.ArrowRight) moveDir.x += 1;
+
+            if (moveDir.lengthSq() > 0) {
+                moveDir.normalize();
+                
+                // Align movement with camera angle
+                const camRotMatrix = new THREE.Matrix4().makeRotationY(cameraAngleX);
+                moveDir.applyMatrix4(camRotMatrix);
+
+                marieCurieMesh.position.addScaledVector(moveDir, speed);
+
+                // Clamp player within room boundaries
+                marieCurieMesh.position.x = Math.max(-6.5, Math.min(6.5, marieCurieMesh.position.x));
+                marieCurieMesh.position.z = Math.max(-6.5, Math.min(6.5, marieCurieMesh.position.z));
+
+                // Rotate player towards movement vector
+                const targetAngle = Math.atan2(moveDir.x, moveDir.z);
+                marieCurieMesh.rotation.y = targetAngle;
+            }
+
+            // Smooth Orbit Camera follow behind Marie Curie
+            const camDistance = 5.5;
+            camera.position.x = marieCurieMesh.position.x + camDistance * Math.sin(cameraAngleX) * Math.cos(cameraAngleY);
+            camera.position.y = marieCurieMesh.position.y + 1.5 + camDistance * Math.sin(cameraAngleY);
+            camera.position.z = marieCurieMesh.position.z + camDistance * Math.cos(cameraAngleX) * Math.cos(cameraAngleY);
+            camera.lookAt(marieCurieMesh.position.x, marieCurieMesh.position.y + 1.2, marieCurieMesh.position.z);
+        }
+
+        function checkProximityAndRaycast() {
+            currentInteractTarget = null;
+            const playerPos = marieCurieMesh.position;
+
+            if (currentStage === GAME_STAGES.PART_1) {
+                if (!hasRockInHand) {
+                    // Check closest rock
+                    let closestRock = null;
+                    let minDist = 1.8;
+                    rocks.forEach(rock => {
+                        if (rock.visible) {
+                            const dist = playerPos.distanceTo(rock.position);
+                            if (dist < minDist) {
+                                minDist = dist;
+                                closestRock = rock;
+                            }
+                        }
+                    });
+                    if (closestRock) {
+                        currentInteractTarget = { type: 'pick_rock', object: closestRock };
+                    }
+                } else {
+                    // Check proximity to bucket
+                    const distToBucket = playerPos.distanceTo(bucketMesh.position);
+                    if (distToBucket < 2.2) {
+                        currentInteractTarget = { type: 'drop_bucket', object: bucketMesh };
+                    }
+                }
+            } else if (currentStage === GAME_STAGES.PART_2) {
+                const distToMortar = playerPos.distanceTo(mortarMesh.position);
+                if (distToMortar < 2.2) {
+                    currentInteractTarget = { type: 'crush_mortar', object: mortarMesh };
+                }
+            } else if (currentStage === GAME_STAGES.PART_3) {
+                const distToRack = playerPos.distanceTo(tubeGroup.position);
+                if (distToRack < 2.2) {
+                    currentInteractTarget = { type: 'fill_tube', object: tubeGroup };
+                }
+            }
+
+            // Update Action Prompt Floating UI
+            const promptEl = document.getElementById('action-prompt');
+            const promptTextEl = document.getElementById('action-text');
+
+            if (currentInteractTarget) {
+                promptEl.classList.remove('opacity-0', 'translate-y-4');
+                promptEl.classList.add('opacity-100', 'translate-y-0');
+
+                switch (currentInteractTarget.type) {
+                    case 'pick_rock':
+                        promptTextEl.innerText = "Pressione E ou Clique para Coletar Pedra de Radiação";
+                        break;
+                    case 'drop_bucket':
+                        promptTextEl.innerText = "Pressione E para Colocar Pedra no Balde";
+                        break;
+                    case 'crush_mortar':
+                        promptTextEl.innerText = "Pressione E para Esmagar a Pedra com o Pilão";
+                        break;
+                    case 'fill_tube':
+                        promptTextEl.innerText = "Pressione E para Extrair e Encher Tubo de Ensaio";
+                        break;
+                }
+            } else {
+                promptEl.classList.remove('opacity-100', 'translate-y-0');
+                promptEl.classList.add('opacity-0', 'translate-y-4');
+            }
+        }
+
+        function checkRaycastInteraction() {
+            if (currentInteractTarget) {
+                performInteraction();
+            }
+        }
+
+        function performInteraction() {
+            if (!currentInteractTarget) return;
+
+            if (currentInteractTarget.type === 'pick_rock') {
+                hasRockInHand = true;
+                currentInteractTarget.object.visible = false;
+                soundFX.playPickup();
+                updateUI("Pedra de Pechblenda na Mão");
+            } 
+            else if (currentInteractTarget.type === 'drop_bucket') {
+                hasRockInHand = false;
+                stageProgress++;
+                soundFX.playPickup();
+                updateUI("Mãos Vazias");
+
+                if (stageProgress >= TARGET_ROCKS) {
+                    advanceToStage(GAME_STAGES.PART_2);
+                }
+            } 
+            else if (currentInteractTarget.type === 'crush_mortar') {
+                if (isCrushing) return;
+                isCrushing = true;
+                soundFX.playCrush();
+
+                // Animate Mortar Pestle
+                let count = 0;
+                const interval = setInterval(() => {
+                    pestleMesh.position.y = 0.3 + Math.sin(count * 2) * 0.15;
+                    count += 0.3;
+                    if (count >= Math.PI * 2) {
+                        clearInterval(interval);
+                        pestleMesh.position.y = 0.3;
+                        isCrushing = false;
+                        stageProgress++;
+                        updateUI();
+
+                        if (stageProgress >= TARGET_CRUSHES) {
+                            advanceToStage(GAME_STAGES.PART_3);
+                        }
+                    }
+                }, 40);
+            } 
+            else if (currentInteractTarget.type === 'fill_tube') {
+                // Find first empty tube
+                const emptyTube = testTubes.find(t => !t.children[1].userData.isFilled);
+                if (emptyTube) {
+                    soundFX.playLiquid();
+                    const liquid = emptyTube.children[1];
+                    liquid.userData.isFilled = true;
+
+                    // Fill Animation
+                    let scaleY = 0.01;
+                    const fillAnim = setInterval(() => {
+                        scaleY += 0.1;
+                        liquid.scale.set(1, scaleY, 1);
+                        liquid.position.y = scaleY * 0.25;
+                        if (scaleY >= 1.0) {
+                            clearInterval(fillAnim);
+                            stageProgress++;
+                            updateUI();
+
+                            if (stageProgress >= TARGET_TUBES) {
+                                triggerVictory();
+                            }
+                        }
+                    }, 50);
+                }
+            }
+        }
+
+        function advanceToStage(nextStage) {
+            currentStage = nextStage;
+            stageProgress = 0;
+
+            const stageTitle = document.getElementById('stage-title');
+            const stageDesc = document.getElementById('stage-desc');
+            const progressLabel = document.getElementById('progress-label');
+
+            if (nextStage === GAME_STAGES.PART_2) {
+                stageTitle.innerText = "Etapa 2: Trituração no Pilão";
+                stageDesc.innerText = "Aproxime-se da mesa de gral/almofariz (pilão) e esmague o minério até obter um pó fino e brilhante.";
+                progressLabel.innerText = "Trabalho de Trituração:";
+                document.getElementById('inv-icon').innerText = "🔨";
+            } else if (nextStage === GAME_STAGES.PART_3) {
+                stageTitle.innerText = "Etapa 3: Extração e Purificação";
+                stageDesc.innerText = "Vá até a bancada dos tubos de ensaio e extraia o elemento radioativo purificado nos tubinhos de vidro.";
+                progressLabel.innerText = "Tubos Preenchidos:";
+                document.getElementById('inv-icon').innerText = "🧪";
+            }
+
+            updateUI();
+        }
+
+        function updateUI(handStatusText = null) {
+            const counterEl = document.getElementById('progress-counter');
+            const progressBarEl = document.getElementById('progress-bar');
+            const invStatusEl = document.getElementById('inv-status');
+
+            let max = 1;
+            if (currentStage === GAME_STAGES.PART_1) max = TARGET_ROCKS;
+            else if (currentStage === GAME_STAGES.PART_2) max = TARGET_CRUSHES;
+            else if (currentStage === GAME_STAGES.PART_3) max = TARGET_TUBES;
+
+            counterEl.innerText = `${stageProgress} / ${max}`;
+            const percentage = Math.min(100, (stageProgress / max) * 100);
+            progressBarEl.style.width = `${percentage}%`;
+
+            if (handStatusText) {
+                invStatusEl.innerText = handStatusText;
+            } else {
+                invStatusEl.innerText = hasRockInHand ? "Pedra de Pechblenda" : "Mãos Vazias";
+            }
+        }
+
+        function triggerVictory() {
+            soundFX.playVictory();
+            document.getElementById('modal-victory').classList.remove('hidden');
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update Player Position
+            updatePlayerMovement();
+
+            // Check Interactions
+            checkProximityAndRaycast();
+
+            // Floating particles animation
+            if (radioactiveParticles) {
+                const positions = radioactiveParticles.geometry.attributes.position.array;
+                for (let i = 1; i < positions.length; i += 3) {
+                    positions[i] += 0.005;
+                    if (positions[i] > 3.5) positions[i] = 0.5;
+                }
+                radioactiveParticles.geometry.attributes.position.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Initialize when page loads
+        window.onload = () => {
+            initEngine();
+            animate();
+        };
+    </script>
+</body>
+</html>
