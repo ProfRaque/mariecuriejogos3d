@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafio Marie Curie</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#eef2ff,#fdf2f8);color:#222;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:min(680px,100%);background:white;border-radius:24px;padding:28px;box-shadow:0 12px 35px #0002}
+.hero{display:flex;gap:16px;align-items:center}.atom{font-size:52px}
+h1{margin:0;font-size:30px} .sub{color:#666;margin-top:6px}
+.score{display:flex;justify-content:space-between;margin:18px 0;gap:10px;flex-wrap:wrap}
+.pill{background:#f3f4f6;padding:9px 14px;border-radius:999px;font-weight:bold}
+.progress{height:9px;background:#e5e7eb;border-radius:20px;overflow:hidden}.bar{height:100%;width:0;background:#6366f1;transition:.3s}
+.question{font-size:21px;font-weight:bold;margin:22px 0 15px}
+.answers{display:grid;gap:10px}
+button{width:100%;min-height:48px;border:2px solid #ddd;border-radius:13px;background:#fafafa;padding:12px 15px;font-size:16px;cursor:pointer;text-align:left}
+button:hover:not(:disabled){border-color:#6366f1;background:#eef2ff}
+button:disabled{cursor:default}
+.feedback{margin-top:15px;padding:13px;border-radius:13px;background:#f3f4f6;min-height:48px}
+.primary{margin-top:15px;background:#6366f1;color:white;border:0;text-align:center;font-weight:bold}
+.center{text-align:center}.center .primary{text-align:center}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main class="card">
+<section id="start">
+  <div class="hero"><div class="atom">⚛️</div><div><h1>Desafio Marie Curie</h1><div class="sub">Teste seus conhecimentos sobre a grande cientista!</div></div></div>
+  <p>Responda às perguntas e descubra quantos pontos consegue fazer.</p>
+  <button class="primary" id="startBtn">Começar o jogo 🚀</button>
+</section>
+
+<section id="game" class="hidden">
+  <div class="score"><span class="pill">⭐ Pontos: <span id="score">0</span></span><span class="pill">❓ Pergunta: <span id="count">1</span>/6</span></div>
+  <div class="progress"><div class="bar" id="bar"></div></div>
+  <div class="question" id="question"></div>
+  <div class="answers" id="answers"></div>
+  <div class="feedback" id="feedback"></div>
+  <button class="primary hidden" id="nextBtn">Próxima pergunta →</button>
+</section>
+
+<section id="result" class="hidden center">
+  <div class="atom">🏆</div>
+  <h1>Fim do desafio!</h1>
+  <p id="resultText"></p>
+  <button class="primary" id="restartBtn">Jogar novamente 🔄</button>
+</section>
+</main>
+
+<script>
+const questions=[
+ {q:"Em qual país Marie Curie nasceu?",a:["França","Polônia","Alemanha","Rússia"],c:1,e:"Marie Curie nasceu em Varsóvia, na Polônia."},
+ {q:"Qual elemento químico Marie Curie ajudou a descobrir?",a:["Hélio","Oxigênio","Polônio","Carbono"],c:2,e:"O polônio foi descoberto por Marie Curie e Pierre Curie."},
+ {q:"Qual outro elemento foi descoberto pelos Curie?",a:["Rádio","Ferro","Cobre","Sódio"],c:0,e:"O rádio foi isolado e estudado pelo casal Curie."},
+ {q:"Marie Curie ganhou quantos Prêmios Nobel?",a:["1","2","3","Nenhum"],c:1,e:"Ela recebeu dois: Física em 1903 e Química em 1911."},
+ {q:"Em qual área Marie Curie realizou pesquisas pioneiras?",a:["Radioatividade","Botânica","Geologia","Astronomia apenas"],c:0,e:"Marie Curie foi uma das principais pioneiras no estudo da radioatividade."},
+ {q:"Quem foi o marido e parceiro científico de Marie Curie?",a:["Albert Einstein","Pierre Curie","Isaac Newton","Niels Bohr"],c:1,e:"Pierre Curie foi seu marido e colaborador científico."}
+];
+
+let index=0,score=0,answered=false;
+const $=id=>document.getElementById(id);
+
+function showQuestion(){
+ answered=false;
+ const q=questions[index];
+ $("count").textContent=index+1;
+ $("score").textContent=score;
+ $("bar").style.width=(index/questions.length*100)+"%";
+ $("question").textContent=q.q;
+ $("feedback").textContent="";
+ $("nextBtn").classList.add("hidden");
+ $("answers").innerHTML="";
+ q.a.forEach((answer,n)=>{
+   const btn=document.createElement("button");
+   btn.textContent=answer;
+   btn.onclick=()=>answerQuestion(n);
+   $("answers").appendChild(btn);
+ });
+}
+
+function answerQuestion(n){
+ if(answered)return;
+ answered=true;
+ const q=questions[index];
+ const buttons=[...$("answers").children];
+ buttons.forEach(b=>b.disabled=true);
+ if(n===q.c){
+   score+=10;
+   $("feedback").textContent="✅ Correto! +10 pontos. "+q.e;
+ }else{
+   $("feedback").textContent="❌ Não foi dessa vez. "+q.e;
+ }
+ buttons[q.c].textContent="✓ "+buttons[q.c].textContent;
+ $("score").textContent=score;
+ $("nextBtn").classList.remove("hidden");
+}
+
+function finish(){
+ $("game").classList.add("hidden");
+ $("result").classList.remove("hidden");
+ let msg=score===60?"Excelente! Você conhece muito sobre Marie Curie!":score>=40?"Muito bem! Você aprendeu bastante sobre Marie Curie.":"Bom começo! Jogue novamente para aprender ainda mais.";
+ $("resultText").textContent=`Você fez ${score} de 60 pontos. ${msg}`;
+}
+
+$("startBtn").onclick=()=>{
+ $("start").classList.add("hidden");
+ $("game").classList.remove("hidden");
+ showQuestion();
+};
+
+$("nextBtn").onclick=()=>{
+ index++;
+ if(index<questions.length) showQuestion();
+ else finish();
+};
+
+$("restartBtn").onclick=()=>{
+ index=0; score=0;
+ $("result").classList.add("hidden");
+ $("game").classList.remove("hidden");
+ showQuestion();
+};
+</script>
+</body>
+</html>
